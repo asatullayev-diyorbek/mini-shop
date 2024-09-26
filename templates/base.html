@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>MultiShop - Online Shop Website Template</title>
+        <meta content="width=device-width, initial-scale=1.0" name="viewport">
+        <meta content="Free HTML Templates" name="keywords">
+        <meta content="Free HTML Templates" name="description">
+    
+        {% include '_components/style.html' %}
+    </head>
+
+    <body>
+        <!-- Topbar Start -->
+        {% include '_components/topbar.html' %}
+        <!-- Topbar End -->
+    
+    
+        <!-- Navbar Start -->
+        {% include '_components/navbar.html' %}
+        <!-- Navbar End -->
+    
+        {% block content %}
+            
+        {% endblock %}
+        
+        <!-- Footer Start -->
+        {% include '_components/footer.html' %}
+        <!-- Footer End -->
+        
+        <!-- Messages -->
+        {% include '_components/messages.html' %}
+        <!-- Messages -->
+    
+        <!-- Back to Top -->
+        <a href="#" class="btn btn-primary back-to-top"><i class="fa fa-angle-double-up"></i></a>
+    
+    
+        {% include '_components/script.html' %}
+    </body>
+</html>
