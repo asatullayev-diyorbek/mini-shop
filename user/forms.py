@@ -1,6 +1,8 @@
 from django import forms
-
 from user.models import User
+import re
+from django.core.exceptions import ValidationError
+from django.forms.utils import ErrorList
 
 
 class RegisterForm(forms.ModelForm):
@@ -122,3 +124,132 @@ class LoginForm(forms.ModelForm):
     def get_user(self):
         username = self.cleaned_data.get('username')
         return User.objects.get(username=username)
+
+
+class PasswordChangeForm(forms.Form):
+    current_password = forms.CharField(
+        label="Amaldagi parol",
+        required=True,
+        widget=forms.PasswordInput(
+            attrs={
+                'class': 'form-control mb-2',
+                'id': 'current_password'
+            }
+        )
+    )
+    new_password = forms.CharField(
+        label="Yangi parol",
+        required=True,
+        widget=forms.PasswordInput(
+            attrs={
+                'class': 'form-control mb-2',
+                'id': 'new_password'
+            }
+        )
+    )
+    confirm_new_password = forms.CharField(
+        label="Yangi parolni qayta kiriting",
+        required=True,
+        widget=forms.PasswordInput(
+            attrs={
+                'class': 'form-control mb-2',
+                'id': 'confirm_new_password'
+            }
+        )
+    )
+
+    def __init__(
+            self,
+            data=None,
+            files=None,
+            auto_id="id_%s",
+            prefix=None,
+            initial=None,
+            error_class=ErrorList,
+            label_suffix=None,
+            empty_permitted=False,
+            field_order=None,
+            use_required_attribute=None,
+            renderer=None,
+    ):
+        super().__init__(data, files, auto_id, prefix, initial, error_class, label_suffix, empty_permitted, field_order,
+                         use_required_attribute, renderer)
+        self.user = None
+
+    def set_user(self, user):
+        assert isinstance(user, User)
+        self.user = user
+
+    def clean_current_password(self):
+        user = self.user
+        current_password = self.cleaned_data['current_password']
+        if not user.check_password(current_password):
+            raise ValidationError("Amaldagi parolga to'g'ri kelmadi!")
+        return current_password
+
+    def clean_new_password(self):
+        cleaned_data = super().clean()
+        new_password = cleaned_data.get("new_password")
+
+        if new_password and len(new_password) < 8:
+            raise ValidationError("Parolda uzunligi kamida 8ta belgi bo'lishi kerak")
+        return new_password
+
+    def clean_confirm_new_password(self):
+        confirm_new_password = self.cleaned_data.get('confirm_new_password')
+        new_password = self.cleaned_data.get('new_password')
+        if confirm_new_password != new_password:
+            raise ValidationError("Yangi parollar mos kelmadi.")
+        return confirm_new_password
+
+
+class UpdateProfileForm(forms.ModelForm):
+    email = forms.CharField(
+        max_length=100,
+        label="Email",
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    phone = forms.CharField(
+        max_length=13,
+        label="Telefon raqam",
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    first_name = forms.CharField(
+        max_length=50,
+        label="Ism",
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    last_name = forms.CharField(
+        max_length=50,
+        label="Familiya",
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+
+
+    class Meta:
+        model = User
+        fields = ('email', 'phone')
+
+    def clean_phone(self):
+        phone_regex = r"^\+998([- ])?(90|91|93|94|95|98|99|33|97|71)([- ])?(\d{3})([- ])?(\d{2})([- ])?(\d{2})$"
+        phone = self.cleaned_data['phone']
+        if not re.fullmatch(phone_regex, phone) and phone:
+            raise ValidationError("Telefon raqami talabga mos emas!")
+        if phone and phone in [user.phone for user in User.objects.all()]:
+            raise ValidationError("Bu telefon raqam allaqachon mavjud!")
+        return phone
+
+    def clean_email(self):
+        email = self.cleaned_data['email']
+        allowed_domains = ['gmail.com', 'mail.ru', 'yandex.ru']
+        domain = email.split('@')[-1]
+        if domain not in allowed_domains and email:
+            raise ValidationError(f"Email quyidagi formatlarda bo'lishi mumkin: {', '.join(allowed_domains)}")
+        if email and email in [user.email for user in User.objects.all()]:
+            raise ValidationError("Bu email allaqachon mavjud!")
+        return email
+
