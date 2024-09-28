@@ -219,13 +219,13 @@ class UpdateProfileForm(forms.ModelForm):
     first_name = forms.CharField(
         max_length=50,
         label="Ism",
-        required=True,
+        required=False,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
     last_name = forms.CharField(
         max_length=50,
         label="Familiya",
-        required=True,
+        required=False,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 

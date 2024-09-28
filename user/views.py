@@ -25,8 +25,12 @@ class ProfileView(View):
         profile_form = UpdateProfileForm(self.request.POST)
 
         if profile_form.is_valid():
-            request.user.email = profile_form.cleaned_data['email']
-            request.user.phone = profile_form.cleaned_data['phone']
+            email = profile_form.cleaned_data['email']
+            phone = profile_form.cleaned_data['phone']
+            if email:
+                request.user.email = email
+            if phone:
+                request.user.phone = phone
             request.user.save()
             messages.success(request, "Qo'shimcha ma'lumotlar muvafaqqiyatli yangilandi!")
             return redirect('user:profile')
