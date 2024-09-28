@@ -1,9 +1,82 @@
-from django.contrib.auth import login, logout
-from django.shortcuts import render, redirect
+from django.contrib.auth import login, logout, update_session_auth_hash
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import View
 from django.contrib import messages
 
-from .forms import RegisterForm, LoginForm
+from .forms import RegisterForm, LoginForm, UpdateProfileForm, PasswordChangeForm
+from .models import User
+
+
+class ProfileView(View):
+    def get(self, request):
+        profile_form = UpdateProfileForm()
+        password_form = PasswordChangeForm()
+        context = {
+            'profile_form': profile_form,
+            'password_form': password_form,
+            'title': 'Profilim',
+            'page_name': 'Profile',
+            'page_icon': 'https://www.freeiconspng.com/thumbs/user-icon/user-icon--16.png'
+        }
+        return render(request, 'user/profile.html', context)
+
+    def post(self, request):
+        profile_form = UpdateProfileForm(self.request.POST)
+
+        if profile_form.is_valid():
+            request.user.email = profile_form.cleaned_data['email']
+            request.user.phone = profile_form.cleaned_data['phone']
+            request.user.save()
+            messages.success(request, "Qo'shimcha ma'lumotlar muvafaqqiyatli yangilandi!")
+            return redirect('user:profile')
+
+        context = {
+            'profile_form': profile_form,
+            'password_form': PasswordChangeForm(),
+            'title': 'Profilim',
+            'page_name': 'Profile',
+            'page_icon': 'https://www.freeiconspng.com/thumbs/user-icon/user-icon--16.png'
+        }
+        return render(request, 'user/profile.html', context)
+
+
+class UpdateProfileImageView(LoginRequiredMixin, View):
+    def post(self, request):
+        if 'image' in request.FILES:
+            image = request.FILES['image']
+            if image.name.endswith(('.jpg', '.jpeg', '.png')):
+                user = request.user
+                user.image = image
+                user.save()
+                messages.success(request, 'Profil rasmi o\'zgartirildi!')
+            else:
+                messages.error(request, 'Noto\'g\'ri fayl formati. JPG, JPEG yoki PNG formatidagi rasmni tanlang.')
+                return redirect('user:profile')
+        messages.error(request, 'Rasmni yuklashda xato!')
+        return redirect('user:profile')
+
+
+class PasswordChangeView(LoginRequiredMixin, View):
+    def post(self, request):
+        user = get_object_or_404(User, id=request.user.id)
+        password_form = PasswordChangeForm(request.POST)
+        password_form.set_user(self.request.user)
+
+        if password_form.is_valid():
+            new_password = password_form.cleaned_data['new_password']
+            user.set_password(new_password)
+            user.save()
+            update_session_auth_hash(request, user)
+            messages.success(request, "Parolingiz yangilandi!")
+            return redirect('user:profile')
+
+        context = {
+            'title': 'Parolni yangilash - Student Office',
+            'password_form': password_form,
+            'profile_form': UpdateProfileForm(),
+        }
+        return render(request, 'user/profile.html', context)
 
 
 class Register(View):
