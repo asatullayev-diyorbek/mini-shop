@@ -1,4 +1,5 @@
 from django.contrib.auth import login, logout, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import View
@@ -8,41 +9,20 @@ from .forms import RegisterForm, LoginForm, UpdateProfileForm, PasswordChangeFor
 from .models import User
 
 
-class ProfileView(View):
+class ProfileView(LoginRequiredMixin, View):
     def get(self, request):
-        profile_form = UpdateProfileForm()
+        profile_form = UpdateProfileForm(instance=request.user)
         password_form = PasswordChangeForm()
         context = {
             'profile_form': profile_form,
             'password_form': password_form,
             'title': 'Profilim',
             'page_name': 'Profile',
-            'page_icon': 'https://www.freeiconspng.com/thumbs/user-icon/user-icon--16.png'
         }
         return render(request, 'user/profile.html', context)
 
     def post(self, request):
-        profile_form = UpdateProfileForm(self.request.POST)
-
-        if profile_form.is_valid():
-            email = profile_form.cleaned_data['email']
-            phone = profile_form.cleaned_data['phone']
-            if email:
-                request.user.email = email
-            if phone:
-                request.user.phone = phone
-            request.user.save()
-            messages.success(request, "Qo'shimcha ma'lumotlar muvafaqqiyatli yangilandi!")
-            return redirect('user:profile')
-
-        context = {
-            'profile_form': profile_form,
-            'password_form': PasswordChangeForm(),
-            'title': 'Profilim',
-            'page_name': 'Profile',
-            'page_icon': 'https://www.freeiconspng.com/thumbs/user-icon/user-icon--16.png'
-        }
-        return render(request, 'user/profile.html', context)
+        return redirect('user:profile')
 
 
 class UpdateProfileImageView(LoginRequiredMixin, View):
@@ -62,6 +42,12 @@ class UpdateProfileImageView(LoginRequiredMixin, View):
 
 
 class PasswordChangeView(LoginRequiredMixin, View):
+    def get(self, request):
+        context = {
+            'title': 'Parolni yangilash',
+            'password_form': PasswordChangeForm(),
+        }
+        return render(request, 'user/password_change.html', context)
     def post(self, request):
         user = get_object_or_404(User, id=request.user.id)
         password_form = PasswordChangeForm(request.POST)
@@ -80,7 +66,41 @@ class PasswordChangeView(LoginRequiredMixin, View):
             'password_form': password_form,
             'profile_form': UpdateProfileForm(),
         }
-        return render(request, 'user/profile.html', context)
+        return render(request, 'user/password_change.html', context)
+
+
+class UpdateProfileView(LoginRequiredMixin, View):
+    def get(self, request):
+        context = {
+            'profile_form': UpdateProfileForm(instance=request.user),
+            'title': "Ma'lumotlarni tahrirlash",
+        }
+        return render(request, 'user/personal_information.html', context)
+
+    def post(self, request):
+        profile_form = UpdateProfileForm(self.request.POST, instance=request.user)
+
+        if profile_form.is_valid():
+            email = profile_form.cleaned_data['email']
+            phone = profile_form.cleaned_data['phone']
+
+            if email:
+                request.user.email = email
+            if phone:
+                request.user.phone = phone
+            request.user.first_name = profile_form.cleaned_data['first_name']
+            request.user.last_name = profile_form.cleaned_data['last_name']
+            request.user.address = profile_form.cleaned_data['address']
+            request.user.save()
+            messages.success(request, "Ma'lumotlar muvafaqqiyatli yangilandi!")
+            return redirect('user:profile')
+
+        context = {
+            'profile_form': profile_form,
+            'title': 'Profilim',
+            'page_name': 'Profile',
+        }
+        return render(request, 'user/personal_information.html', context)
 
 
 class Register(View):
@@ -88,8 +108,6 @@ class Register(View):
         context = {
             'form': RegisterForm(),
             'title': "Ro'yxatdan o'tish",
-            'page_name': "Register",
-            'page_icon': "https://static.vecteezy.com/system/resources/thumbnails/010/695/423/small_2x/fill-out-the-e-mail-form-with-a-pen-vector.jpg"
         }
         return render(request, 'user/register.html', context)
 
@@ -102,39 +120,39 @@ class Register(View):
         context = {
             'form': form,
             'title': "Ro'yxatdan o'tish",
-            'page_name': "Register",
-            'page_icon': "https://static.vecteezy.com/system/resources/thumbnails/010/695/423/small_2x/fill-out-the-e-mail-form-with-a-pen-vector.jpg"
         }
         return render(request, 'user/register.html', context)
 
 
 class Login(View):
     def get(self, request):
+        if request.user.is_authenticated:
+            return redirect('shop:home')
         context = {
             'form': LoginForm(),
             'title': 'Kirish',
-            'page_name': 'Login',
-            'page_icon': 'https://www.freeiconspng.com/thumbs/login-icon/door-login-icon--1.png'
         }
         return render(request, 'user/login.html', context)
 
     def post(self, request):
+        if request.user.is_authenticated:
+            return redirect('shop:home')
         form = LoginForm(request.POST)
         if form.is_valid():
             user = form.cleaned_data['user']
             login(request, user)
             messages.success(request, f"Salom {user.username} siz tizimga kirdingiz!")
-            return redirect('shop:home')
+            to = request.GET.get('next', 'shop:home')
+            return redirect(to)
         else:
             context = {
                 'form': form,
                 'title': 'Kirish',
-                'page_name': 'Login',
-                'page_icon': 'https://www.freeiconspng.com/thumbs/login-icon/door-login-icon--1.png'
             }
             return render(request, 'user/login.html', context)
 
 
+@login_required
 def logout_user(request):
     logout(request)
     messages.warning(request, 'Siz tizimdan chiqdingiz!')

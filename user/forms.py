@@ -53,7 +53,9 @@ class RegisterForm(forms.ModelForm):
     def clean_password2(self):
         password1 = self.cleaned_data.get('password1')
         password2 = self.cleaned_data.get('password2')
-        if password1 and password2 and password1 != password2:
+        if password1 and len(password1) < 8:
+            raise forms.ValidationError('Password must be at least 8 characters long')
+        if password2 and password1 != password2:
             raise forms.ValidationError('Passwords must match')
         return password2
 
@@ -67,10 +69,14 @@ class RegisterForm(forms.ModelForm):
 
     def clean_username(self):
         username = self.cleaned_data.get('username')
+        if not username[0].isalpha():
+            raise forms.ValidationError('Username birinchi belgisi harf bo\'lishi kerak')
+        if not re.match(r'^[A-Za-z][A-Za-z0-9_]*$', username):
+            raise forms.ValidationError('Username faqat harflar, raqamlar va _ belgisidan iborat bo\'lishi mumkin')
+        if len(username) < 5:
+            raise forms.ValidationError('Kamida 5ta belgi')
         if User.objects.filter(username=username).exists():
             raise forms.ValidationError('Username already exists')
-        if len(username) < 5:
-            raise forms.ValidationError('Username must be at least 5 characters long')
         return username
 
     def create_user(self):
@@ -204,43 +210,60 @@ class PasswordChangeForm(forms.Form):
 
 
 class UpdateProfileForm(forms.ModelForm):
-    email = forms.CharField(
-        max_length=100,
-        label="Email",
-        required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-    phone = forms.CharField(
-        max_length=13,
-        label="Telefon raqam",
-        required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
     first_name = forms.CharField(
         max_length=50,
         label="Ism",
         required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'id': 'first_name'})
     )
     last_name = forms.CharField(
         max_length=50,
         label="Familiya",
         required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'id': 'last_name'})
+    )
+    email = forms.CharField(
+        max_length=100,
+        label="Email",
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'id': 'email'})
+    )
+    phone = forms.CharField(
+        max_length=13,
+        label="Telefon raqam",
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'id': 'phone'})
+    )
+    address = forms.CharField(
+        max_length=255,
+        label="Manzil",
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'id': 'address'})
+    )
+    username = forms.CharField(
+        label='Username',
+        max_length=30,
+        required=True,
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-control',
+                'id': 'username'
+            }
+        )
     )
 
 
     class Meta:
         model = User
-        fields = ('email', 'phone')
+        fields = ('first_name', 'last_name','email', 'phone', 'username', 'address')
 
     def clean_phone(self):
         phone_regex = r"^\+998([- ])?(90|91|93|94|95|98|99|33|97|71)([- ])?(\d{3})([- ])?(\d{2})([- ])?(\d{2})$"
         phone = self.cleaned_data['phone']
         if not re.fullmatch(phone_regex, phone) and phone:
             raise ValidationError("Telefon raqami talabga mos emas!")
-        if phone and phone in [user.phone for user in User.objects.all()]:
-            raise ValidationError("Bu telefon raqam allaqachon mavjud!")
+        if User.objects.filter(phone=self.cleaned_data['phone']).exclude(id=self.instance.id).exists():
+            raise ValidationError("Bu telefon raqami band!")
         return phone
 
     def clean_email(self):
@@ -249,7 +272,38 @@ class UpdateProfileForm(forms.ModelForm):
         domain = email.split('@')[-1]
         if domain not in allowed_domains and email:
             raise ValidationError(f"Email quyidagi formatlarda bo'lishi mumkin: {', '.join(allowed_domains)}")
-        if email and email in [user.email for user in User.objects.all()]:
-            raise ValidationError("Bu email allaqachon mavjud!")
+        if User.objects.filter(email=self.cleaned_data['email']).exclude(id=self.instance.id).exists():
+            raise ValidationError("Bu email band!")
         return email
+
+    def clean_first_name(self):
+        first_name = self.cleaned_data['first_name']
+        if len(first_name) < 4 and first_name:
+            raise ValidationError("Ismning uzunligi kamida 4 ta belgi bo'lishi kerak!")
+        return first_name
+
+    def clean_last_name(self):
+        last_name = self.cleaned_data['last_name']
+        if len(last_name) < 4 and last_name:
+            raise ValidationError("Familiyaning uzunligi kamida 4 ta belgi bo'lishi kerak!")
+        return last_name
+
+    def clean_address(self):
+        address = self.cleaned_data['address']
+        if len(address) < 10 and address:
+            raise ValidationError("Kamida 10 ta belgi")
+        return address
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if not username[0].isalpha():
+            raise forms.ValidationError('Username birinchi belgisi harf bo\'lishi kerak')
+        if not re.match(r'^[A-Za-z][A-Za-z0-9_]*$', username):
+            raise forms.ValidationError('Username faqat harflar, raqamlar va _ belgisidan iborat bo\'lishi mumkin')
+        if len(username) < 5:
+            raise forms.ValidationError('Kamida 5ta belgi')
+        if User.objects.filter(username=username).exclude(id=self.instance.id).exists():
+            raise ValidationError("Bu email band!")
+        return username
+
 
