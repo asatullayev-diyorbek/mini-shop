@@ -1,12 +1,18 @@
-from django.contrib.auth import login, logout, update_session_auth_hash
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic import View
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core.mail import send_mail
+from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse_lazy
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.views.generic import View, FormView
 from django.contrib import messages
-
-from .forms import RegisterForm, LoginForm, UpdateProfileForm, PasswordChangeForm
+from .forms import RegisterForm, LoginForm, UpdateProfileForm, PasswordChangeForm, ResetPasswordForm, SetNewPasswordForm
 from .models import User
+from django.contrib.auth import update_session_auth_hash
+
 
 
 class ProfileView(LoginRequiredMixin, View):
@@ -101,6 +107,83 @@ class UpdateProfileView(LoginRequiredMixin, View):
             'page_name': 'Profile',
         }
         return render(request, 'user/personal_information.html', context)
+
+
+class ResetPasswordView(View):
+    def get(self, request):
+        context = {
+            'title': "Parolni unutdim",
+            'reset_form': ResetPasswordForm(),
+        }
+        return render(request, 'user/password_reset.html', context)
+
+    def post(self, request):
+        reset_form = ResetPasswordForm(request.POST)
+        if reset_form.is_valid():
+            email = reset_form.cleaned_data['email']
+            user = User.objects.get(email=email)
+            token_generator = PasswordResetTokenGenerator()
+
+            token = token_generator.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+            reset_link = reverse_lazy('user:password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
+            reset_url = self.request.build_absolute_uri(reset_link)
+
+            email_subject = 'Parolingizni qayta tiklash'
+            email_body = "Sizning emailingizga parolni qayta tiklash uchun link yuborildi."\
+                f"Link: {reset_url} "\
+                "Sizning emailingizni o'qish uchun boshqa tugmanlardan foydalanishingiz mumkin"
+
+            send_mail(
+                email_subject, email_body,
+                None, [user.email],
+                fail_silently=False,
+            )
+            messages.success(request, "Sizning emailingizga parol almashtirish uchun link va qo'llanma yuborildi.")
+            return redirect('shop:home')
+
+
+        context = {
+            'title': "Parolni unutdim",
+            'reset_form': reset_form,
+        }
+        return render(request, 'user/password_reset.html', context)
+
+
+class PasswordResetConfirmView(FormView):
+    template_name = 'user/password_reset_confirm.html'
+    form_class = SetNewPasswordForm
+    success_url = reverse_lazy('user:login')
+
+    def dispatch(self, request, *args, **kwargs):
+        self.uidb64 = kwargs['uidb64']
+        self.token = kwargs['token']
+        self.user = self.get_user()
+
+        token_generator = PasswordResetTokenGenerator()
+        if self.user is not None and token_generator.check_token(self.user, self.token):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            messages.error(request, "Bu link yaroqli emas!")
+            return redirect('user:password_reset')
+
+    def get_user(self):
+        try:
+            uid = urlsafe_base64_decode(self.uidb64).decode()
+            return User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return None
+
+    def form_valid(self, form):
+        new_password = form.cleaned_data['new_password']
+        self.user.set_password(new_password)
+        self.user.save()
+
+        update_session_auth_hash(self.request, self.user)
+        messages.success(self.request, "Parolingiz muvafaqqiyatli o'zgartirildi!")
+
+        return super().form_valid(form)
 
 
 class Register(View):

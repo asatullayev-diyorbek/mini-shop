@@ -307,3 +307,44 @@ class UpdateProfileForm(forms.ModelForm):
         return username
 
 
+class ResetPasswordForm(forms.Form):
+    email = forms.EmailField(
+        label='Email', required=True,
+        widget=forms.EmailInput(
+            attrs={
+                'placeholder': 'Email',
+                'class': 'form-control',
+                'id': 'email'
+            }
+        )
+    )
+
+    def clean_email(self):
+        email = self.cleaned_data['email']
+        if not User.objects.filter(email=email).exists():
+            raise ValidationError("Bunday emailga ega foydalanuvchi topilmadi")
+        return email
+
+
+class SetNewPasswordForm(forms.Form):
+    new_password = forms.CharField(
+        label='Yangi parol',
+        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        required=True
+    )
+    confirm_password = forms.CharField(
+        label='Parolni tasdiqlang',
+        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        required=True
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        new_password = cleaned_data.get('new_password')
+        confirm_password = cleaned_data.get('confirm_password')
+
+        if new_password and confirm_password and new_password != confirm_password:
+            raise forms.ValidationError("Parollar mos kelmadi.")
+
+        return cleaned_data
+
