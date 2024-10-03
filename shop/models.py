@@ -60,14 +60,17 @@ class Product(models.Model):
 
     def current_price(self):
         if self.is_discount:
-            return '{:.2f}'.format(self.price * (1 - self.discount/100))
+            return round(self.price * (1 - self.discount/100), 2)
         return self.price
 
     def get_rating(self):
-        comments = self.comments.filter(rating__gt=0)
+        comments = self.comments.all()
         if comments.exists():
             return '{:.2f}'.format(sum(comment.rating for comment in comments) / comments.count())
         return 0
+
+    def get_rating2x(self):
+        return self.get_rating() * 2
 
 
 class Comment(models.Model):

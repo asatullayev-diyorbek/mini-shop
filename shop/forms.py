@@ -13,7 +13,6 @@ class CommentForm(forms.Form):
             'id': 'rating',
             'min': '1',
             'max': '5',
-            'placeholder': 'Rate from 1 to 5',
             'type': 'hidden',
             'value': 1
         })

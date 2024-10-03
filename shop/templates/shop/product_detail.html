@@ -27,7 +27,7 @@
                     <div class="d-flex mb-3">
                         <div class="text-primary mr-2">
                             {% for _ in "01234" %}
-                                {% if forloop.counter|floatformat <= product.get_rating %}
+                                {% if forloop.counter|floatformat <= product.get_rating2x %}
                                     <small class="fa fa-star text-primary"></small>
                                 {% else %}
                                     <small class="fa fa-star text-secondary"></small>
@@ -52,19 +52,19 @@
                     <div class="d-flex align-items-center mb-4 pt-2">
                         <div class="input-group quantity mr-3" style="width: 130px;">
                             <div class="input-group-btn">
-                                <button class="btn btn-primary btn-minus">
+                                <button id="btn_minus" {% if product_cart == 0 %} disabled {% endif %} class="btn btn-primary btn-minus" onclick="updateCart(event, 'remove', '{{ product.pk }}')">
                                     <i class="fa fa-minus"></i>
                                 </button>
                             </div>
-                            <input type="text" class="form-control bg-secondary border-0 text-center" value="1">
+                            <input type="text" class="form-control bg-secondary border-0 text-center" value="{{ product_cart }}" readonly>
                             <div class="input-group-btn">
-                                <button class="btn btn-primary btn-plus">
+                                <button class="btn btn-primary btn-plus" onclick="updateCart(event, 'add', '{{ product.pk }}')">
                                     <i class="fa fa-plus"></i>
                                 </button>
                             </div>
                         </div>
-                        <button class="btn btn-primary px-3"><i class="fa fa-shopping-cart mr-1"></i>
-                            Add to Cart
+                        <button class="btn btn-primary px-3"><i class="fa fa-dollar-sign mr-1"></i>
+                            Buy Now
                         </button>
                     </div>
                     <div class="d-flex pt-2">
@@ -207,7 +207,6 @@
         </div>
     </div>
     <!-- Shop Detail End -->
-
 
     <!-- Products Start -->
     <div class="container-fluid py-5">

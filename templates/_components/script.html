@@ -10,12 +10,60 @@
 <script src="{% static 'shop/mail/jqBootstrapValidation.min.js' %}"></script>
 <script src="{% static 'shop/mail/contact.js' %}"></script>
 
-<!-- MDB -->
-<script
-  type="text/javascript"
-  src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/8.0.0/mdb.umd.min.js"
-></script>
-
 <!-- Template Javascript -->
 <script src="{% static 'shop/js/main.js' %}"></script>
 <script src="{% static 'shop/js/custom.js' %}"></script>
+
+
+<script>
+    function showToast(message, title = "Notification") {
+        var toastId = 'toast-' + Math.random().toString(36).substring(2, 9);
+
+        var toastHTML = `
+        <div id="${toastId}" class="toast show" role="alert" aria-live="assertive" aria-atomic="true" style="max-height: 45px; background-color: #e2eaf7">
+            <div class="toast-content">
+                ${title}: ${message}
+            </div>
+        </div>`;
+
+        document.getElementById('toast-container').insertAdjacentHTML('beforeend', toastHTML);
+
+        // Remove toast after a few seconds
+        setTimeout(() => {
+            document.getElementById(toastId).remove();
+        }, 3000);
+    }
+
+
+    function updateCart(event, action, productId) {
+        event.preventDefault();
+
+        var url = '/cart/' + productId + '/' + action + '/';
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const btn_minus = document.getElementById('btn_minus');
+
+                    if (action === 'remove' && data.message === "Cartdan o'chirildi") {
+                        btn_minus.disabled = true;
+                    } else if (action === 'remove') {
+                        btn_minus.disabled = false;
+                    }
+
+                    console.log(data.message);
+
+                    showToast(data.message);
+
+                    document.getElementById('cart-count_top').innerText = Object.keys(data.cart).length;
+                    document.getElementById('cart-count_nav').innerText = Object.keys(data.cart).length;
+                }
+            })
+            .catch(error => console.log('Error:', error));
+    }
+</script>

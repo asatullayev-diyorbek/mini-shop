@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-{% load static %}
 <html lang="en">
     <head>
         <meta charset="utf-8">
@@ -12,6 +11,8 @@
     </head>
 
     <body>
+        <div id="toast-container"></div>
+        
         <!-- Topbar Start -->
         {% include '_components/topbar.html' %}
         <!-- Topbar End -->
@@ -20,7 +21,8 @@
         <!-- Navbar Start -->
         {% include '_components/navbar.html' %}
         <!-- Navbar End -->
-    
+
+        
         {% block content %}
             
         {% endblock %}
